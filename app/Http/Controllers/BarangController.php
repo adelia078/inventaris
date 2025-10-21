@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 
@@ -36,9 +37,6 @@ class BarangController extends Controller implements HasMiddleware
         return view('barang.index', compact('barangs'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $kategori = Kategori::all();
@@ -61,22 +59,51 @@ class BarangController extends Controller implements HasMiddleware
             'satuan' => 'required|string|max:20',
             'kondisi' => 'required|in:Baik,Rusak Ringan,Rusak Berat',
             'tanggal_pengadaan' => 'required|date',
+            'sumber_dana' => 'required|in:Pemerintah,Swadaya,Donatur',
+            'jenis_barang' => 'required|in:Unik,Massal',
+            'boleh_dipinjam' => 'nullable|boolean',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+
+        // Set default boleh_dipinjam jika tidak dicentang
+        $validated['boleh_dipinjam'] = $request->has('boleh_dipinjam') ? 1 : 0;
 
         if ($request->hasFile('gambar')) {
             $validated['gambar'] = $request->file('gambar')->store(null, 'gambar-barang');
         }
 
-        Barang::create($validated);
+        DB::beginTransaction();
+        try {
+            // Jika jenis barang UNIK dan jumlah > 1, buat multiple records
+            if ($validated['jenis_barang'] === 'Unik' && $validated['jumlah'] > 1) {
+                $kodeBase = $validated['kode_barang'];
+                $jumlahTotal = $validated['jumlah'];
 
-        return redirect()->route('barang.index')
-        ->with('success', 'Data barang berhasil ditambahkan.');
+                for ($i = 1; $i <= $jumlahTotal; $i++) {
+                    $dataBarang = $validated;
+                    $dataBarang['kode_barang'] = $kodeBase . str_pad($i, 3, '0', STR_PAD_LEFT);
+                    $dataBarang['jumlah'] = 1; // Setiap record hanya 1 unit
+                    
+                    Barang::create($dataBarang);
+                }
+            } else {
+                // Jika MASSAL atau jumlah = 1, buat single record
+                Barang::create($validated);
+            }
+
+            DB::commit();
+
+            return redirect()->route('barang.index')
+                ->with('success', 'Data barang berhasil ditambahkan.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->withInput()
+                ->with('error', 'Gagal menambahkan data barang: ' . $e->getMessage());
+        }
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Barang $barang)
     {
         $barang->load(['kategori', 'lokasi']);
@@ -84,9 +111,6 @@ class BarangController extends Controller implements HasMiddleware
         return view('barang.show', compact('barang'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(Barang $barang)
     {
         $kategori = Kategori::all();
@@ -95,9 +119,6 @@ class BarangController extends Controller implements HasMiddleware
         return view('barang.edit', compact('barang', 'kategori', 'lokasi'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, Barang $barang)
     {
         $validated = $request->validate([
@@ -109,8 +130,14 @@ class BarangController extends Controller implements HasMiddleware
             'satuan' => 'required|string|max:20',
             'kondisi' => 'required|in:Baik,Rusak Ringan,Rusak Berat',
             'tanggal_pengadaan' => 'required|date',
+            'sumber_dana' => 'required|in:Pemerintah,Swadaya,Donatur',
+            'jenis_barang' => 'required|in:Unik,Massal',
+            'boleh_dipinjam' => 'nullable|boolean',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+
+        // Set boleh_dipinjam
+        $validated['boleh_dipinjam'] = $request->has('boleh_dipinjam') ? 1 : 0;
 
         if($request->hasFile('gambar')) {
             if ($barang->gambar) {
@@ -118,26 +145,24 @@ class BarangController extends Controller implements HasMiddleware
             }
 
             $validated['gambar'] = $request->file('gambar')->store(null, 'gambar-barang');
-
         }
 
         $barang->update($validated);
 
-        return redirect()->route('barang.index')->with('success', 'Data barang berhasil diperbarui.');
+        return redirect()->route('barang.index')
+            ->with('success', 'Data barang berhasil diperbarui.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Barang $barang)
     {
-            if ($barang->gambar) {
-                Storage::disk('gambar-barang')->delete($barang->gambar);
-            }
+        if ($barang->gambar) {
+            Storage::disk('gambar-barang')->delete($barang->gambar);
+        }
 
-            $barang->delete();
+        $barang->delete();
 
-            return redirect()->route('barang.index')->with('success', 'Data barang berhasil dihapus.');
+        return redirect()->route('barang.index')
+            ->with('success', 'Data barang berhasil dihapus.');
     }
 
     public function cetakLaporan()

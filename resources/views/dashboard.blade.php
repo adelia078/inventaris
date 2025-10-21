@@ -1,30 +1,41 @@
-<x-main-layout :title-page="__('Dashboard')">
-   <h3 class="mb-4 fw-light"> 
-    Selamat Datang, <strong>{{ auth()->user()->name }}</strong>
-   </h3>
+<x-main-layout :title-page="'Dashboard'">
+    <h3 class="mb-4 fw-light">
+        Selamat Datang, <strong>{{ auth()->user()->name }}</strong>!
+    </h3>
 
-   @include('dashboard-partials.list-kartu-total')
+    @include('dashboard-partials.list-kartu-total')
 
-   <div class="row">
-    <div class="col-lg-6 mb-4">
-        <div class="card shadow">
-        <div class="card-header py-3">
-            <h6>Ringkasan Kondisi Barang</h6>
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6>Ringkasan Kondisi Barang</h6>
+                </div>
+                @include('dashboard-partials.list-kondisi-barang')
+            </div>
         </div>
-        @include('dashboard-partials.list-kondisi-barang')
-    </div>
-   </div>
 
-   <div class="col-lg-6 mb-4">
-        <div class="card shadow">
-        <div class="card-header py-3">
-            <h6>5 Barang Terakhir Ditambahkan</h6>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6>5 Barang Terakhir Ditambahkan</h6>
+                </div>
+                <div class="card-body table-responsive">
+                    @include('dashboard-partials.list-barang-terbaru')
+                </div>
+            </div>
         </div>
-        <div class="card-body table-responsive">
-        @include('dashboard-partials.list-barang-terbaru')
-    </div>
 
-   </div>
-   </div>
-   </div>
+        <!-- TAMBAHKAN INI - Card Peminjaman Terbaru -->
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6>5 Peminjaman Aktif Terbaru</h6>
+                </div>
+                <div class="card-body table-responsive">
+                    @include('dashboard-partials.list-peminjaman-terbaru')
+                </div>
+            </div>
+        </div>
+    </div>
 </x-main-layout>

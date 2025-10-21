@@ -2,24 +2,58 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Barang extends Model
 {
-    protected $guarded = ['id'];
+    use HasFactory;
+
+    protected $fillable = [
+        'kode_barang',
+        'nama_barang',
+        'kategori_id',
+        'lokasi_id',
+        'jumlah',
+        'satuan',
+        'kondisi',
+        'tanggal_pengadaan',
+        'gambar',
+        'sumber_dana',
+        'boleh_dipinjam',
+        'jenis_barang',
+    ];
 
     protected $casts = [
         'tanggal_pengadaan' => 'date',
+        'boleh_dipinjam' => 'boolean',
     ];
 
-    public function kategori(): BelongsTo
+    public function kategori()
     {
-        return $this->belongsTo(Kategori::class, 'kategori_id');
+        return $this->belongsTo(Kategori::class);
     }
 
-    public function lokasi(): BelongsTo
+    public function lokasi()
     {
-        return $this->belongsTo(Lokasi::class, 'lokasi_id');
+        return $this->belongsTo(Lokasi::class);
+    }
+
+    public function peminjaman()
+    {
+        return $this->hasMany(Peminjaman::class);
+    }
+
+    // Relasi ke model Pemeliharaan
+    public function pemeliharaan()
+    {
+        return $this->hasMany(Pemeliharaan::class);
+    }
+
+    // Get pemeliharaan yang sedang aktif
+    public function pemeliharaanAktif()
+    {
+        return $this->hasOne(Pemeliharaan::class)
+                    ->whereNotIn('status', ['Selesai']);
     }
 }
